@@ -12,11 +12,21 @@ class AdminOrderScreen extends StatefulWidget {
 class _AdminOrderScreenState extends State<AdminOrderScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<void> _updateOrderStatus(String orderId, String newStatus) async {
+  Future<void> _updateOrderStatus(String orderId, String newStatus, String userId) async {
     try {
       await _firestore.collection('orders').doc(orderId).update({
         'status': newStatus,
       });
+
+      await _firestore.collection('notifications').add({
+        'userId': userId,
+        'title': 'Order Status Updated',
+        'body': 'Your order ($orderId) has been updated to "$newStatus".',
+        'orderId': orderId,
+        'createdAt': FieldValue.serverTimestamp(),
+        'isRead': false,
+      });
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Order status updated!')),
@@ -29,7 +39,7 @@ class _AdminOrderScreenState extends State<AdminOrderScreen> {
     }
   }
 
-  void _showStatusDialog(String orderId, String currentStatus) {
+  void _showStatusDialog(String orderId, String currentStatus, String userId) {
     showDialog(
       context: context,
       builder: (dialogContext) {
@@ -44,7 +54,7 @@ class _AdminOrderScreenState extends State<AdminOrderScreen> {
                 title: Text(status),
                 trailing: currentStatus == status ? const Icon(Icons.check) : null,
                 onTap: () {
-                  _updateOrderStatus(orderId, status);
+                  _updateOrderStatus(orderId, status, userId);
                   Navigator.of(dialogContext).pop();
                 },
               );
@@ -130,7 +140,7 @@ class _AdminOrderScreenState extends State<AdminOrderScreen> {
                                     : Colors.red,
                   ),
                   onTap: () {
-                    _showStatusDialog(order.id, status);
+                    _showStatusDialog(order.id, status, userId);
                   },
                 ),
               );

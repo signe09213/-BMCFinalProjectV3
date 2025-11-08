@@ -9,6 +9,9 @@ import 'package:ecommerce_app/providers/cart_provider.dart';
 import 'package:ecommerce_app/screens/product_detail_screen.dart';
 import 'package:ecommerce_app/screens/cart_screen.dart';
 import 'package:ecommerce_app/screens/order_history_screen.dart';
+import 'package:ecommerce_app/screens/profile_screen.dart';
+import 'package:ecommerce_app/widgets/notification_icon.dart';
+import 'package:ecommerce_app/screens/chat_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -45,24 +48,12 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _signOut() async {
-    try {
-      await FirebaseAuth.instance.signOut();
-      if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-        (route) => false,
-      );
-    } catch (e) {
-      // ignore
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_currentUser != null ? 'Welcome, ${_currentUser!.email}' : 'Home'),
+        title: Text(_currentUser != null ? 'Welcome!' : 'Home'),
         actions: [
           Consumer<CartProvider>(
             builder: (context, cart, child) {
@@ -102,6 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
           ),
+          const NotificationIcon(),
           IconButton(
             icon: const Icon(Icons.receipt_long),
             tooltip: 'My Orders',
@@ -126,9 +118,15 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
           IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Logout',
-            onPressed: _signOut,
+            icon: const Icon(Icons.person_outline),
+            tooltip: 'Profile',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const ProfileScreen(),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -183,6 +181,41 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         },
       ),
+      floatingActionButton: _userRole == 'user' && _currentUser != null
+          ? StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('chats')
+                  .doc(_currentUser!.uid)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                int unreadCount = 0;
+                if (snapshot.hasData && snapshot.data!.exists) {
+                  final data = snapshot.data!.data();
+                  if (data != null) {
+                    unreadCount = (data as Map<String, dynamic>)['unreadByUserCount'] ?? 0;
+                  }
+                }
+
+                return Badge(
+                  label: Text('$unreadCount'),
+                  isLabelVisible: unreadCount > 0,
+                  child: FloatingActionButton.extended(
+                    icon: const Icon(Icons.support_agent),
+                    label: const Text('Contact Admin'),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => ChatScreen(
+                            chatRoomId: _currentUser!.uid,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+            )
+          : null,
     );
   }
 }

@@ -52,12 +52,20 @@ class CartProvider with ChangeNotifier {
     return total;
   }
 
-  double get totalPrice {
+  double get subtotal {
     double total = 0.0;
-    for (final item in _items) {
-      total += item.price * item.quantity;
+    for (var item in _items) {
+      total += (item.price * item.quantity);
     }
     return total;
+  }
+
+  double get vat {
+    return subtotal * 0.12;
+  }
+
+  double get totalPriceWithVat {
+    return subtotal + vat;
   }
 
   CartProvider() {
@@ -116,12 +124,12 @@ class CartProvider with ChangeNotifier {
     }
   }
 
-  void addItem(String id, String name, double price) {
+  void addItem(String id, String name, double price, int quantity) {
     final int index = _items.indexWhere((item) => item.id == id);
     if (index != -1) {
-      _items[index].quantity++;
+      _items[index].quantity += quantity;
     } else {
-      _items.add(CartItem(id: id, name: name, price: price));
+      _items.add(CartItem(id: id, name: name, price: price, quantity: quantity));
     }
 
     _saveCart();
@@ -144,12 +152,16 @@ class CartProvider with ChangeNotifier {
       final List<Map<String, dynamic>> cartData =
           _items.map((item) => item.toJson()).toList();
 
-      final double total = totalPrice;
+      final double sub = subtotal;
+      final double v = vat;
+      final double total = totalPriceWithVat;
       final int count = itemCount;
 
       await _firestore.collection('orders').add({
         'userId': _userId,
         'items': cartData,
+        'subtotal': sub,
+        'vat': v,
         'totalPrice': total,
         'itemCount': count,
         'status': 'Pending',
